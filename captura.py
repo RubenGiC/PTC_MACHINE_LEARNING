@@ -59,167 +59,103 @@ def capturarDatos(path, clientID, params, caso):
     #numero de posiciones a trasladarse
     puntos = 5
     
-    if(caso>0):
-        
-        # obtenermos la referencia a la persona de pie Bill para moverla    
-        _, personhandle = vrep.simxGetObjectHandle(clientID, 'Bill', vrep.simx_opmode_oneshot_wait)
-    
-        #con esto indico cada cuantas iteraciones el muñeco se trasladara
-        mover = maxIter//puntos
-        
-        #grado de rotación por cada x iteraciones
-        """
-        Ejemplo si tenemos 50 iteraciones y tenemos 5 puntos, cada punto tendrá 10 
-        iteraciones, de tal forma que girara 360/10 = 36º por cada iteración haciendo 
-        los 360º de ese punto y se repetira con el resto.
-        """
-        rot = 360//mover
-        
-        #guardo el radio
-        radio = params[1]
-        
-        """
-        calculamos el angulo que tendrá cada parte, experimentando vi que tiene 
-        una amplitud de 90º el laser del robot y por eso la amplitud es 90º
-        """
-        ang_part = (90/puntos)
-        
-        #inicializo el angulo inicial de donde partira (va de izquierda a derecha con respecto al robot)
-        angulo = -(ang_part*2)
-     
-        #recorro las x iteraciones
-        while(iteracion<=maxIter and seguir):
-            
-            #si ha rotado 360º muevo el muñeco
-            if(iteracion%mover == 1):
-                
-                """
-                Para calcular la traslación con respecto al radio:
-                    x = cos(angulo)/radio
-                    y = sin(angulo)/radio
-                    
-                    este va de -72º a 72º, esto se ha hecho así, porque se va a mover
-                    en 5 puntos, con lo cual va de -72º, -36º, 0º, 36º, 72º
-                """
-                ejeX = math.cos(math.radians(angulo))*radio
-                ejeY = math.sin(math.radians(angulo))*radio
-                
-                print(f'TRASLACIÓN: X={ejeX}, Y={ejeY}')
-                
-                #Situamos donde queremos a la persona de pie, unidades en metros
-                returnCode = vrep.simxSetObjectPosition(clientID,personhandle,-1,[ejeX,ejeY,0.0],vrep.simx_opmode_oneshot)
-                
-                #incremento el angulo para la siguiente traslación
-                angulo += ang_part
-            
-            
-            #calculo el angulo en radianes para la rotación del muñeco
-            #ejeZ = (math.pi*rot*iteracion)/180
-            ejeZ =  math.radians(rot*iteracion)
-            
-            print(f'Rotacion (radianes): {ejeZ}')
-            
-            #Cambiamos la orientacion, ojo está en radianes: Para pasar de grados a radianes hay que multiplicar por PI y dividir por 180
-            returnCode = vrep.simxSetObjectOrientation(clientID, personhandle, -1, [0.0,0.0,ejeZ], vrep.simx_opmode_oneshot)
-            
-            time.sleep(segundos) #esperamos un tiempo para que el ciclo de lectura de datos no sea muy rápido
-            
-            puntosx=[] #listas para recibir las coordenadas x, y z de los puntos detectados por el laser
-            puntosy=[]
-            puntosz=[]
-            returnCode, signalValue = vrep.simxGetStringSignal(clientID,'LaserData',vrep.simx_opmode_buffer) 
-           
-            datosLaser=vrep.simxUnpackFloats(signalValue)
-            for indice in range(0,len(datosLaser),3):
-                puntosx.append(datosLaser[indice+1])
-                puntosy.append(datosLaser[indice+2])
-                puntosz.append(datosLaser[indice])
-            
-            print("Iteración: ", iteracion)                
-            
-            if(iteracion == 1 or iteracion == maxIter):
-                #pinto los puntos obtenidos
-                plt.clf()    
-                plt.plot(puntosx, puntosy, 'r.')
-                name = path.split('.')[0]
-                plt.savefig(name+str(iteracion)+".jpg")
-            
-            #Guardamos los puntosx, puntosy en el fichero JSON
-            lectura={"Iteracion":iteracion, "PuntosX":puntosx, "PuntosY":puntosy}
-            #ficheroLaser.write('{}\n'.format(json.dumps(lectura)))
-            ficheroLaser.write(json.dumps(lectura)+'\n')
-            
-            tecla = cv2.waitKey(5) & 0xFF
-            if tecla == 27:
-                seguir=False
-            
-            iteracion=iteracion+1
-    else:
-        
+    if(caso<0):
         # obtenermos la referencia del cilindro 1 y 2 para moverla    
-        _, cilindro1 = vrep.simxGetObjectHandle(clientID, 'Cylinder', vrep.simx_opmode_oneshot_wait)
-        _, cilindro2 = vrep.simxGetObjectHandle(clientID, 'Cylinder1', vrep.simx_opmode_oneshot_wait)
+        _, obj = vrep.simxGetObjectHandle(clientID, 'Cylinder', vrep.simx_opmode_oneshot_wait)
+    else:
+        # obtenermos la referencia a la persona de pie Bill para moverla    
+        _, obj = vrep.simxGetObjectHandle(clientID, 'Bill', vrep.simx_opmode_oneshot_wait)
+    
+    #con esto indico cada cuantas iteraciones el muñeco se trasladara
+    mover = maxIter//puntos
+    
+    #grado de rotación por cada x iteraciones
+    """
+    Ejemplo si tenemos 50 iteraciones y tenemos 5 puntos, cada punto tendrá 10 
+    iteraciones, de tal forma que girara 360/10 = 36º por cada iteración haciendo 
+    los 360º de ese punto y se repetira con el resto.
+    """
+    rot = 360//mover
+    
+    #guardo el radio
+    radio = params[1]
+    
+    """
+    calculamos el angulo que tendrá cada parte, experimentando vi que tiene 
+    una amplitud de 90º el laser del robot y por eso la amplitud es 90º
+    """
+    ang_part = (90/puntos)
+    
+    #inicializo el angulo inicial de donde partira (va de izquierda a derecha con respecto al robot)
+    angulo = -(ang_part*2)
+ 
+    #recorro las x iteraciones
+    while(iteracion<=maxIter and seguir):
         
-         # obtenermos la referencia a la persona de pie Bill para moverla    
-        #_, personhandle = vrep.simxGetObjectHandle(clientID, 'Dummy', vrep.simx_opmode_oneshot_wait)
-        _, personhandle = vrep.simxGetObjectHandle(clientID, 'Bill', vrep.simx_opmode_oneshot_wait)
-        
-        #con esto indico cada cuantas iteraciones el muñeco se trasladara
-        mover = maxIter//puntos
-        
-        #grado de rotación por cada x iteraciones
-        """
-        Ejemplo si tenemos 50 iteraciones y tenemos 5 puntos, cada punto tendrá 10 
-        iteraciones, de tal forma que girara 360/10 = 36º por cada iteración haciendo 
-        los 360º de ese punto y se repetira con el resto.
-        """
-        rot = (360//mover)
-        
-        #guardo el radio
-        radio = params[1]
-        
-        """
-        calculamos el angulo que tendrá cada parte, experimentando vi que tiene 
-        una amplitud de 90º el laser del robot y por eso la amplitud es 90º
-        """
-        ang_part = (90/puntos)
-        
-        #inicializo el angulo inicial de donde partira (va de izquierda a derecha con respecto al robot)
-        angulo = -(ang_part*2)
-        
-        
-        #recorro las x iteraciones
-        while(iteracion<=10 and seguir):
+        #si ha rotado 360º muevo el muñeco
+        if(iteracion%mover == 1):
             
-            print("Iteración: ", iteracion)    
-     
-            ejeX1 = math.cos(math.radians(angulo-5))*radio
-            ejeY1 = math.sin(math.radians(angulo-5))*radio
-            ejeX2 = math.cos(math.radians(angulo+10))*radio
-            ejeY2 = math.sin(math.radians(angulo+10))*radio
-            
-            ejeZ =  math.radians(rot*iteracion)
-            
+            """
+            Para calcular la traslación con respecto al radio:
+                x = cos(angulo)/radio
+                y = sin(angulo)/radio
                 
-            print(f'ROTACION Cilindro1: X={ejeX1}, Y={ejeY1}')
-            print(f'ROTACION Cilindro2: X={ejeX2}, Y={ejeY2}')
-                
+                este va de -72º a 72º, esto se ha hecho así, porque se va a mover
+                en 5 puntos, con lo cual va de -72º, -36º, 0º, 36º, 72º
+            """
+            ejeX = math.cos(math.radians(angulo))*radio
+            ejeY = math.sin(math.radians(angulo))*radio
+            
+            print(f'TRASLACIÓN: X={ejeX}, Y={ejeY}')
+            
             #Situamos donde queremos a la persona de pie, unidades en metros
-            #returnCode = vrep.simxSetObjectPosition(clientID,cilindro1,-1,[ejeX1,ejeY1,0.0],vrep.simx_opmode_oneshot)
-            #returnCode = vrep.simxSetObjectPosition(clientID,cilindro2,-1,[ejeX2,ejeY2,0.0],vrep.simx_opmode_oneshot)
-            returnCode = vrep.simxSetObjectOrientation(clientID, personhandle, -1, [0.0,0.0,ejeZ], vrep.simx_opmode_oneshot)
-            #returnCode = vrep.simxSetObjectOrientation(clientID, cilindro2, -1, [0.0,0.0,ejeZ], vrep.simx_opmode_oneshot)
-                
+            returnCode = vrep.simxSetObjectPosition(clientID,obj,-1,[ejeX,ejeY,0.0],vrep.simx_opmode_oneshot)
+            
             #incremento el angulo para la siguiente traslación
-            #angulo += ang_part
-            
-            time.sleep(segundos) #esperamos un tiempo para que el ciclo de lectura de datos no sea muy rápido
-                
-            tecla = cv2.waitKey(5) & 0xFF
-            if tecla == 27:
-                seguir=False
-            
-            iteracion=iteracion+1
+            angulo += ang_part
+        
+        
+        #calculo el angulo en radianes para la rotación del muñeco
+        #ejeZ = (math.pi*rot*iteracion)/180
+        ejeZ =  math.radians(rot*iteracion)
+        
+        print(f'Rotacion (radianes): {ejeZ}')
+        
+        #Cambiamos la orientacion, ojo está en radianes: Para pasar de grados a radianes hay que multiplicar por PI y dividir por 180
+        returnCode = vrep.simxSetObjectOrientation(clientID, obj, -1, [0.0,0.0,ejeZ], vrep.simx_opmode_oneshot)
+        
+        time.sleep(segundos) #esperamos un tiempo para que el ciclo de lectura de datos no sea muy rápido
+        
+        puntosx=[] #listas para recibir las coordenadas x, y z de los puntos detectados por el laser
+        puntosy=[]
+        puntosz=[]
+        returnCode, signalValue = vrep.simxGetStringSignal(clientID,'LaserData',vrep.simx_opmode_buffer) 
+       
+        datosLaser=vrep.simxUnpackFloats(signalValue)
+        for indice in range(0,len(datosLaser),3):
+            puntosx.append(datosLaser[indice+1])
+            puntosy.append(datosLaser[indice+2])
+            puntosz.append(datosLaser[indice])
+        
+        print("Iteración: ", iteracion)                
+        
+        if(iteracion == 1 or iteracion == maxIter):
+            #pinto los puntos obtenidos
+            plt.clf()    
+            plt.plot(puntosx, puntosy, 'r.')
+            name = path.split('.')[0]
+            plt.savefig(name+str(iteracion)+".jpg")
+        
+        #Guardamos los puntosx, puntosy en el fichero JSON
+        lectura={"Iteracion":iteracion, "PuntosX":puntosx, "PuntosY":puntosy}
+        #ficheroLaser.write('{}\n'.format(json.dumps(lectura)))
+        ficheroLaser.write(json.dumps(lectura)+'\n')
+        
+        tecla = cv2.waitKey(5) & 0xFF
+        if tecla == 27:
+            seguir=False
+        
+        iteracion=iteracion+1
             
         
     #detenemos la simulacion
