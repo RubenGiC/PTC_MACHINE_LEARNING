@@ -11,11 +11,12 @@ import numpy as np
 import os
 import vrep
 from captura import capturarDatos
+from agrupar import agruparDatos
 
 #ed_iter = None
 
 #parametros [iteraciones, cerca, medio, lejos, minpuntos, maxpuntos, umbral distancia]
-params = [50, 0.5, 1.5, 2.5, 3, 0, 0]
+params = [50, 0.5, 1.5, 2.5, 3, 41, 0.06]
 
 #guardo los estados posibles de la aplicación
 estados = ('Estado: No conectado a VREP', 'Estado: Conectado a VREP')
@@ -127,6 +128,7 @@ def disconectVREP():
 def capture():
     global lbox_ficheros, b_agrupar
     
+    #obtengo la posición del fichero seleccionado
     pos=lbox_ficheros.curselection()    
     
     if(len(pos)==0):
@@ -142,9 +144,62 @@ def capture():
         """
         pos = pos[0]
         
-        cap=capturarResults(pos)
+        msg="Editado el archivo "+lista_archivos[pos]
+        escrito = False
         
-        if(cap):
+        #compruebo si existe el archivo
+        if(not os.path.exists(lista_archivos[pos])):
+            #si no existe, pregunto si quiere crear el archivo
+            sino=tkinter.messagebox.askyesno(
+                'Crear JSON',
+                'El archivo '+lista_archivos[pos]+' no esta creado, ¿Quiere crearlo?'
+                )
+            msg = "Creado el archivo "+lista_archivos[pos]
+        else:
+            #si existe, pregunto si quiere sobreescribir el archivo
+            sino=tkinter.messagebox.askyesno(
+                'Editar JSON',
+                'El archivo '+lista_archivos[pos]+' existe, ¿Quiere reescribirlo?'
+                )
+                
+        #si es si crea o edita el archivo
+        if(sino):
+            
+            #con esto indico si es un caso positivo o negativo
+            caso = 1
+            
+            #guardamos las iteraciones y el radio
+            parametros = [params[0]]
+            
+            if(pos in [0,3,6,9]):
+                parametros.append(params[1])
+            elif(pos in [1,4,7,10]):
+                parametros.append(params[2])
+            else:
+                parametros.append(params[3])
+                
+            #indico que estamos en un caso negativo
+            if(pos > 5):
+                caso = -1
+            
+            """
+            LLamara a Capturar.py que le pasará el fichero a reescribir o crear
+            donde capturara los datos del simulador, cuando termine, si ha 
+            terminado con exito habilitara el boton agrupar, para ello devolvera un booleano
+            """
+            escrito = capturarDatos(lista_archivos[pos], clientID, parametros, caso)
+            
+            """
+            ficheroCapturar=open(lista_archivos[pos], "w")
+            
+            ficheroCapturar.write('holaaaa')
+            ficheroCapturar.close()
+            """
+            
+            if(escrito):
+                print(msg)
+        
+        if(escrito):
             if(not pos in capturado):
                 globals()['capturado'].append(pos)
             if(len(capturado) == len(lista_archivos)):
@@ -155,11 +210,12 @@ def agrupar():
     global b_extraer
     
     """
-    Llamara a Agrupar.py que generara los ficheros con los clusters positivos y 
-    negativos, tomando como ejemplo los capturados con el boton capturar
+    generara los ficheros con los clusters positivos y negativos, tomando como 
+    ejemplo los json capturados con el boton capturar
     """
-    agrup = True
+    agrup = agruparDatos(params[4], params[5], params[6], lista_archivos)
     
+    #si se a agrupado bien activara el boton extraer
     if(agrup):
         b_extraer.config(state='normal')
     
@@ -246,65 +302,6 @@ def creaDirectorios(directorios):
         else:#en caso contrario muestro un mensaje de error
             #sys.exit("Error: ya existe el directorio "+ directorio)
             print("Error: ya existe el directorio "+ directorios[i])
-            
-def capturarResults(pos):
-    
-    msg="Editado el archivo "+lista_archivos[pos]
-    escrito = False
-    
-    #compruebo si existe el archivo
-    if(not os.path.exists(lista_archivos[pos])):
-        #si no existe, pregunto si quiere crear el archivo
-        sino=tkinter.messagebox.askyesno(
-            'Crear JSON',
-            'El archivo '+lista_archivos[pos]+' no esta creado, ¿Quiere crearlo?'
-            )
-        msg = "Creado el archivo "+lista_archivos[pos]
-    else:
-        #si existe, pregunto si quiere sobreescribir el archivo
-        sino=tkinter.messagebox.askyesno(
-            'Editar JSON',
-            'El archivo '+lista_archivos[pos]+' existe, ¿Quiere reescribirlo?'
-            )
-            
-    #si es si crea o edita el archivo
-    if(sino):
-        
-        #con esto indico si es un caso positivo o negativo
-        caso = 1
-        
-        #guardamos las iteraciones y el radio
-        parametros = [params[0]]
-        
-        if(pos in [0,3,6,9]):
-            parametros.append(params[1])
-        elif(pos in [1,4,7,10]):
-            parametros.append(params[2])
-        else:
-            parametros.append(params[3])
-            
-        #indico que estamos en un caso negativo
-        if(pos > 5):
-            caso = -1
-        
-        """
-        LLamara a Capturar.py que le pasará el fichero a reescribir o crear
-        cuando termine, si ha terminado con exito habilitara el boton agrupar,
-        para ello devolvera un booleano
-        """
-        escrito = capturarDatos(lista_archivos[pos], clientID, parametros, caso)
-        
-        """
-        ficheroCapturar=open(lista_archivos[pos], "w")
-        
-        ficheroCapturar.write('holaaaa')
-        ficheroCapturar.close()
-        """
-        
-        if(escrito):
-            print(msg)
-        
-    return escrito
         
 #clase que crea la interfaz y usa la funcionalidad de la aplicación
 class Aplicacion():

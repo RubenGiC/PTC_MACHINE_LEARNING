@@ -21,21 +21,19 @@ el id del cliente, la ruta del archivo a almacenar los datos, los parametros
 
 def capturarDatos(path, clientID, params, caso):
     
-    #Guardar la referencia al robot
-    _, robothandle = vrep.simxGetObjectHandle(clientID, 'Pioneer_p3dx', vrep.simx_opmode_oneshot_wait)
+    # mostramos el directorio de trabajo y vemos si existe el dir para salvar los datos
+    print("Directorio de trabajo es: ", os.getcwd())
     
     #Guardar la referencia de los motores
     _, left_motor_handle=vrep.simxGetObjectHandle(clientID, 'Pioneer_p3dx_leftMotor', vrep.simx_opmode_oneshot_wait)
     _, right_motor_handle=vrep.simxGetObjectHandle(clientID, 'Pioneer_p3dx_rightMotor', vrep.simx_opmode_oneshot_wait)
      
+    #Guardar la referencia de la camara
+    _, camhandle = vrep.simxGetObjectHandle(clientID, 'Vision_sensor', vrep.simx_opmode_oneshot_wait)
+     
+    
     #acceder a los datos del laser
     _, datosLaserComp = vrep.simxGetStringSignal(clientID,'LaserData',vrep.simx_opmode_streaming)
-    
-    # mostramos el directorio de trabajo y vemos si existe el dir para salvar los datos
-    print("Directorio de trabajo es: ", os.getcwd())
-    
-    #Creamos el fichero JSON para guardar los datos del laser
-    #usamos diccionarios
     
     #indicamos el tiempo de espeta 0.5 segundos
     segundos=0.5
@@ -48,7 +46,7 @@ def capturarDatos(path, clientID, params, caso):
     cabecera={"TiempoSleep":segundos,
               "MaxIteraciones":maxIter}
     
-    #accedo o creo el archivo json
+    #accedo o creo el archivo json para guardar los datos del laser
     ficheroLaser=open(path, "w")
 
     #gardamos la cabecera en el archivo
@@ -59,9 +57,12 @@ def capturarDatos(path, clientID, params, caso):
     #numero de posiciones a trasladarse
     puntos = 5
     
+    #si es un caso negativo moveremos un objeto Cilindro
     if(caso<0):
         # obtenermos la referencia del cilindro 1 y 2 para moverla    
         _, obj = vrep.simxGetObjectHandle(clientID, 'Cylinder', vrep.simx_opmode_oneshot_wait)
+    
+    #en caso contrario es un caso positivo y moveremos un objeto persona
     else:
         # obtenermos la referencia a la persona de pie Bill para moverla    
         _, obj = vrep.simxGetObjectHandle(clientID, 'Bill', vrep.simx_opmode_oneshot_wait)
@@ -139,6 +140,7 @@ def capturarDatos(path, clientID, params, caso):
         
         print("Iteración: ", iteracion)                
         
+        #guardamos las graficas de la primera y ultima iteración
         if(iteracion == 1 or iteracion == maxIter):
             #pinto los puntos obtenidos
             plt.clf()    
@@ -151,6 +153,7 @@ def capturarDatos(path, clientID, params, caso):
         #ficheroLaser.write('{}\n'.format(json.dumps(lectura)))
         ficheroLaser.write(json.dumps(lectura)+'\n')
         
+        #para cortar la captura
         tecla = cv2.waitKey(5) & 0xFF
         if tecla == 27:
             seguir=False
