@@ -12,6 +12,7 @@ import os
 import vrep
 from captura import capturarDatos
 from agrupar import agruparDatos
+from caracteristicas import calculaCaracteristicas
 
 #ed_iter = None
 
@@ -218,6 +219,9 @@ def agrupar():
     #si se a agrupado bien activara el boton extraer
     if(agrup):
         b_extraer.config(state='normal')
+        
+def extraer():
+    calculaCaracteristicas(['resultados/clustersPiernas.json','resultados/clustersNoPiernas.json'])
     
 #función que comprueba que los datos son correctos al pulsar cambiar
 def validarDatos():
@@ -365,7 +369,8 @@ class Aplicacion():
         b_extraer = tkinter.Button(
             self.parent, 
             text='Extraer caracteristicas', 
-            state = tkinter.DISABLED)
+            state = tkinter.DISABLED, 
+            command=extraer)
         b_extraer.grid(row=6, column=0)
         b_entrena = tkinter.Button(
             self.parent, 
@@ -470,6 +475,14 @@ class Aplicacion():
         if(len(capturado) == len(lista_archivos)):
             b_agrupar.config(state='normal')
     
+        #comprueba si existen los archivos clustersNoPiernas.json y clustersPiernas.json
+        #si existe activa el boton Extraer caracteristicas
+        
+        file1 = 'resultados/clustersNoPiernas.json'
+        file2 = 'resultados/clustersPiernas.json'
+        
+        if(os.path.exists(file1) and os.path.exists(file2)):
+            b_extraer.config(state='normal')
     
 #compruebo si esta en el entorno principal, si lo esta ejecuto la aplicación
 if __name__=="__main__":
