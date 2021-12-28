@@ -13,6 +13,7 @@ import vrep
 from captura import capturarDatos
 from agrupar import agruparDatos
 from caracteristicas import calculaCaracteristicas
+from clasificarSVM import clasificadorSVM
 
 #ed_iter = None
 
@@ -220,8 +221,50 @@ def agrupar():
     if(agrup):
         b_extraer.config(state='normal')
         
+        #muestro el mensaje de que se ha agrupado correctamente
+        tkinter.messagebox.showinfo(
+            'Agrupar',
+            'Se han generado correctamente los clusters'
+            )
+    else:
+        #muestro el mensaje de que se ha producido un error
+        tkinter.messagebox.showwarning(
+            'Agrupar',
+            'Hay un error al agrupar los datos'
+            )
+        
+        
 def extraer():
-    calculaCaracteristicas(['resultados/clustersPiernas.json','resultados/clustersNoPiernas.json'])
+    terminado = calculaCaracteristicas(['resultados/clustersPiernas.json','resultados/clustersNoPiernas.json'])
+    
+    if(terminado):
+        #muestro el mensaje de que se ha extraido correctamente
+        tkinter.messagebox.showinfo(
+            'Extraer',
+            'Se han extraido correctamente los datos'
+            )
+    else:
+        #muestro el mensaje de que se ha producido un error
+        tkinter.messagebox.showwarning(
+            'Extraer',
+            'Hay un error al extraer los datos'
+            )
+    
+def entrenar():
+    terminado = clasificadorSVM()
+    
+    if(terminado):
+        #muestro el mensaje de que se ha entrenado correctamente
+        tkinter.messagebox.showinfo(
+            'Entrenamiento',
+            'Se han entrenado correctamente'
+            )
+    else:
+        #muestro el mensaje de que se ha producido un error
+        tkinter.messagebox.showwarning(
+            'Entrenamiento',
+            'Hay un error al entrenar con el clasificador'
+            )
     
 #función que comprueba que los datos son correctos al pulsar cambiar
 def validarDatos():
@@ -289,8 +332,6 @@ def validarDatos():
             )
         
 def creaDirectorios(directorios):
-    
-    
     
     #y para guardar directorios en una ruta especifica
     for i in np.arange(len(directorios)):
@@ -375,7 +416,8 @@ class Aplicacion():
         b_entrena = tkinter.Button(
             self.parent, 
             text='Entrenar Clasificador', 
-            state = tkinter.DISABLED)
+            state = tkinter.DISABLED,
+            command = entrenar)
         b_entrena.grid(row=7, column=0)
         b_predeci = tkinter.Button(self.parent, text='Predecir', state = tkinter.DISABLED)
         b_predeci.grid(row=8, column=0)
@@ -483,6 +525,9 @@ class Aplicacion():
         
         if(os.path.exists(file1) and os.path.exists(file2)):
             b_extraer.config(state='normal')
+            
+        if(os.path.exists('resultados/piernasDataset.csv')):
+            b_entrena.config(state='normal')
     
 #compruebo si esta en el entorno principal, si lo esta ejecuto la aplicación
 if __name__=="__main__":
