@@ -22,7 +22,7 @@ import predecir
 '''
 La distancia cerca es 0.8 porque en 0.5 movia el robot y la lectura lo leia mál
 '''
-params = [50, 0.8, 1.5, 2.5, 3, 41, 0.06]
+params = [50, 0.8, 1.5, 2.5, 3, 41, 0.05]
 
 #guardo los estados posibles de la aplicación
 estados = ('Estado: No conectado a VREP', 'Estado: Conectado a VREP')

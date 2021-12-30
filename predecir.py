@@ -153,50 +153,68 @@ def modelo(clientID, minimo, maximo, umbral):
             #almacenare los centroides de cada 2 objetos iguales o 1 objeto igual (si es un cilindro)
             piernas = {'x':[], 'y':[]}
             nopiernas = {'x':[], 'y':[]}
+            centroides = {'x':[], 'y':[]}
             
-            #cuando detecta 2 piernas o 2 cilindros
-            saltar = False
+            #umbral de distancia entre 2 objetos (2 piernas o 2 cilindros)
+            umb = 0.39
             
             #recorremos todos los clusters
             for i in np.arange(len(y_pred)):
+                   
+                #si la posicion es > 0, es decir de 1 para arriba
+                if(i>0):
+                    #recorro las posiciones 0 hasta n-1
+                    for e in np.arange(i):
+                        #comparo si la predicción es igual (2 piernas o 2 cilindros)
+                        if(y_pred[i] == y_pred[e]):
+                            #si lo son calculo su distancia
+                            sumasX = np.power(clusteres[e]['PuntosX'][-1]-clusteres[i]['PuntosX'][0],2)
+                            sumasY = np.power(clusteres[e]['PuntosY'][-1]-clusteres[i]['PuntosY'][0],2)
+                            distancia = np.sqrt(sumasX+sumasY)
+                            
+                            #si la discancia es <= al umbral (0.39)
+                            if(distancia <= umb):
+                                print('¿pierna (1 si)?', y_pred[i])
+                                print('Posiciones: ',e, i)
+                                print('distancias:',distancia)
+                                
+                                #calculo el centro de ambos clusteres en X e Y
+                                
+                                centroide1 = (clusteres[e]['PuntosX'][0]+clusteres[e]['PuntosX'][-1])/2
+                                centroide2 = (clusteres[i]['PuntosX'][0]+clusteres[i]['PuntosX'][-1])/2
+                                
+                                print('centroide X: (',centroide1,'-',centroide2,')/2 =',(centroide1+centroide2)/2)
+                                
+                                centroides['x'].append((centroide1+centroide2)/2)
+                                
+                                centroide1 = (clusteres[e]['PuntosY'][0]+clusteres[e]['PuntosY'][-1])/2
+                                centroide2 = (clusteres[i]['PuntosY'][0]+clusteres[i]['PuntosY'][-1])/2
+                                
+                                print('centroide Y: (',centroide1,'-',centroide2,')/2 =',(centroide1+centroide2)/2)
+                                
+                                centroides['y'].append((centroide1 + centroide2)/2)
                 
-                if(i == len(y_pred)-1 and not saltar):
-                    nopiernas['x'].append((clusteres[i]['PuntosX'][0]+clusteres[i]['PuntosX'][-1])/2)
-                    nopiernas['y'].append((clusteres[i]['PuntosY'][0]+clusteres[i]['PuntosY'][-1])/2)
+                #separo los clusters que son piernas de las que no son piernas
+                if(y_pred[i]==1):
+                    piernas['x'] += clusteres[i]['PuntosX']
+                    piernas['y'] += clusteres[i]['PuntosY']
                 else:
-                    #si los 2 objetos consecutivos son piernas y no tiene que saltar
-                    if(not saltar and y_pred[i]==1 and y_pred[i+1]==1):
-                        #calculo los centroides x e y y los guardo
-                        piernas['x'].append((clusteres[i]['PuntosX'][0]+clusteres[i+1]['PuntosX'][-1])/2)
-                        piernas['y'].append((clusteres[i]['PuntosY'][0]+clusteres[i+1]['PuntosY'][-1])/2)
-                        saltar = True
-                        
-                    #si los 2 objetos consecutivos no son piernas y no tiene que saltar
-                    elif(not saltar and y_pred[i]==0 and y_pred[i+1]==0):
-                        #calculo los centroides x e y y los guardo
-                        nopiernas['x'].append((clusteres[i]['PuntosX'][0]+clusteres[i+1]['PuntosX'][-1])/2)
-                        nopiernas['y'].append((clusteres[i]['PuntosY'][0]+clusteres[i+1]['PuntosY'][-1])/2)
-                        saltar = True
-                    
-                    #si hay 1 objeto que no es pierna y no tiene que saltar
-                    elif(not saltar and y_pred[i] != y_pred[i+1]):
-                        #calculo los centroides x e y y los guardo
-                        nopiernas['x'].append((clusteres[i]['PuntosX'][0]+clusteres[i]['PuntosX'][-1])/2)
-                        nopiernas['y'].append((clusteres[i]['PuntosY'][0]+clusteres[i]['PuntosY'][-1])/2)
-                    else:#en caso contrario resetea el salto
-                        saltar=False 
-            
-            #imprimo los centroides de los objetos
+                    nopiernas['x'] += clusteres[i]['PuntosX']
+                    nopiernas['y'] += clusteres[i]['PuntosY']
+                
+            '''
+            #imprimo los puntos que son piernas y no piernas
             print('Piernas:')
             print(piernas)
             print('No Piernas:')
             print(nopiernas)
-        
+            '''
             try:
                 #pinto los puntos obtenidos
                 plt.clf()    
-                plt.scatter(piernas['x'], piernas['y'], c='red')
-                plt.scatter(nopiernas['x'], nopiernas['y'], c='blue')
+                plt.scatter(piernas['x'], piernas['y'], c='red', s=5.0)
+                plt.scatter(nopiernas['x'], nopiernas['y'], c='blue', s=5.0)
+                plt.scatter(centroides['x'], centroides['y'], c='green', s=5.0)
                 plt.legend(['Piernas', 'No piernas'])
                 #plt.savefig("resultados/prediccion/predecido.jpg")
                 plt.savefig("resultados/prediccion/predecido.jpg")
