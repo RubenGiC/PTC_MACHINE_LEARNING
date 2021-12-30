@@ -14,11 +14,15 @@ from captura import capturarDatos
 from agrupar import agruparDatos
 from caracteristicas import calculaCaracteristicas
 from clasificarSVM import clasificadorSVM
+import predecir
 
 #ed_iter = None
 
 #parametros [iteraciones, cerca, medio, lejos, minpuntos, maxpuntos, umbral distancia]
-params = [50, 0.5, 1.5, 2.5, 3, 41, 0.06]
+'''
+La distancia cerca es 0.8 porque en 0.5 movia el robot y la lectura lo leia mál
+'''
+params = [50, 0.8, 1.5, 2.5, 3, 41, 0.06]
 
 #guardo los estados posibles de la aplicación
 estados = ('Estado: No conectado a VREP', 'Estado: Conectado a VREP')
@@ -96,6 +100,9 @@ def conectVREP():
         b_conect.config(state=tkinter.DISABLED)
         #y activo el boton de capturar
         b_captura.config(state="normal")
+        
+        if(os.path.exists('resultados/piernasDataset.csv') and clientID != -1):
+            b_predeci.config(state='normal')
     
 #habilita todos los botones
 def debugAc():
@@ -126,6 +133,7 @@ def disconectVREP():
     b_descon.config(state=tkinter.DISABLED)
     b_conect.config(state="normal")
     b_captura.config(state=tkinter.DISABLED)
+    b_predeci.config(state=tkinter.DISABLED)
     
 def capture():
     global lbox_ficheros, b_agrupar
@@ -133,79 +141,78 @@ def capture():
     #obtengo la posición del fichero seleccionado
     pos=lbox_ficheros.curselection()    
     
-    if(len(pos)==0):
-        #muestro el mensaje de que debe elegir un archivo para capturar
-        tkinter.messagebox.showwarning(
-            'Capturar',
-            'Debe elegir un archivo de la lista'
+    if(clientID == -1):
+        tkinter.messagebox.showerror(
+            'Error Conect VREP',
+            'Debe conectar con VREP'
             )
     else:
-        """
-        #como devuelve una tupla y solo puede seleccionar 1 archivo, cojo el
-        de la primera posición
-        """
-        pos = pos[0]
-        
-        msg="Editado el archivo "+lista_archivos[pos]
-        escrito = False
-        
-        #compruebo si existe el archivo
-        if(not os.path.exists(lista_archivos[pos])):
-            #si no existe, pregunto si quiere crear el archivo
-            sino=tkinter.messagebox.askyesno(
-                'Crear JSON',
-                'El archivo '+lista_archivos[pos]+' no esta creado, ¿Quiere crearlo?'
+        if(len(pos)==0):
+            #muestro el mensaje de que debe elegir un archivo para capturar
+            tkinter.messagebox.showwarning(
+                'Capturar',
+                'Debe elegir un archivo de la lista'
                 )
-            msg = "Creado el archivo "+lista_archivos[pos]
         else:
-            #si existe, pregunto si quiere sobreescribir el archivo
-            sino=tkinter.messagebox.askyesno(
-                'Editar JSON',
-                'El archivo '+lista_archivos[pos]+' existe, ¿Quiere reescribirlo?'
-                )
-                
-        #si es si crea o edita el archivo
-        if(sino):
+            """
+            #como devuelve una tupla y solo puede seleccionar 1 archivo, cojo el
+            de la primera posición
+            """
+            pos = pos[0]
             
-            #con esto indico si es un caso positivo o negativo
-            caso = 1
+            msg="Editado el archivo "+lista_archivos[pos]
+            escrito = False
             
-            #guardamos las iteraciones y el radio
-            parametros = [params[0]]
-            
-            if(pos in [0,3,6,9]):
-                parametros.append(params[1])
-            elif(pos in [1,4,7,10]):
-                parametros.append(params[2])
+            #compruebo si existe el archivo
+            if(not os.path.exists(lista_archivos[pos])):
+                #si no existe, pregunto si quiere crear el archivo
+                sino=tkinter.messagebox.askyesno(
+                    'Crear JSON',
+                    'El archivo '+lista_archivos[pos]+' no esta creado, ¿Quiere crearlo?'
+                    )
+                msg = "Creado el archivo "+lista_archivos[pos]
             else:
-                parametros.append(params[3])
+                #si existe, pregunto si quiere sobreescribir el archivo
+                sino=tkinter.messagebox.askyesno(
+                    'Editar JSON',
+                    'El archivo '+lista_archivos[pos]+' existe, ¿Quiere reescribirlo?'
+                    )
+                    
+            #si es si crea o edita el archivo
+            if(sino):
                 
-            #indico que estamos en un caso negativo
-            if(pos > 5):
-                caso = -1
-            
-            """
-            LLamara a Capturar.py que le pasará el fichero a reescribir o crear
-            donde capturara los datos del simulador, cuando termine, si ha 
-            terminado con exito habilitara el boton agrupar, para ello devolvera un booleano
-            """
-            escrito = capturarDatos(lista_archivos[pos], clientID, parametros, caso)
-            
-            """
-            ficheroCapturar=open(lista_archivos[pos], "w")
-            
-            ficheroCapturar.write('holaaaa')
-            ficheroCapturar.close()
-            """
+                #con esto indico si es un caso positivo o negativo
+                caso = 1
+                
+                #guardamos las iteraciones y el radio
+                parametros = [params[0]]
+                
+                if(pos in [0,3,6,9]):
+                    parametros.append(params[1])
+                elif(pos in [1,4,7,10]):
+                    parametros.append(params[2])
+                else:
+                    parametros.append(params[3])
+                    
+                #indico que estamos en un caso negativo
+                if(pos > 5):
+                    caso = -1
+                
+                """
+                LLamara a Capturar.py que le pasará el fichero a reescribir o crear
+                donde capturara los datos del simulador, cuando termine, si ha 
+                terminado con exito habilitara el boton agrupar, para ello devolvera un booleano
+                """
+                escrito = capturarDatos(lista_archivos[pos], clientID, parametros, caso)
+                
+                if(escrito):
+                    print(msg)
             
             if(escrito):
-                print(msg)
-        
-        if(escrito):
-            if(not pos in capturado):
-                globals()['capturado'].append(pos)
-            if(len(capturado) == len(lista_archivos)):
-                b_agrupar.config(state='normal')
+                if(not pos in capturado):
+                    globals()['capturado'].append(pos)
+                if(len(capturado) == len(lista_archivos)):
+                    b_agrupar.config(state='normal')
     
 def agrupar():
     
@@ -226,6 +233,15 @@ def agrupar():
             'Agrupar',
             'Se han generado correctamente los clusters'
             )
+        
+        #comprueba si existen los archivos clustersNoPiernas.json y clustersPiernas.json
+        #si existe activa el boton Extraer caracteristicas
+        
+        file1 = 'resultados/clustersNoPiernas.json'
+        file2 = 'resultados/clustersPiernas.json'
+        
+        if(os.path.exists(file1) and os.path.exists(file2)):
+            b_extraer.config(state='normal')
     else:
         #muestro el mensaje de que se ha producido un error
         tkinter.messagebox.showwarning(
@@ -243,28 +259,56 @@ def extraer():
             'Extraer',
             'Se han extraido correctamente los datos'
             )
+        if(os.path.exists('resultados/piernasDataset.csv')):
+            b_entrena.config(state='normal')
     else:
         #muestro el mensaje de que se ha producido un error
         tkinter.messagebox.showwarning(
             'Extraer',
             'Hay un error al extraer los datos'
             )
+            
     
 def entrenar():
-    terminado = clasificadorSVM()
+    terminado, acierto = clasificadorSVM()
     
     if(terminado):
         #muestro el mensaje de que se ha entrenado correctamente
         tkinter.messagebox.showinfo(
             'Entrenamiento',
-            'Se han entrenado correctamente'
+            'Se han entrenado correctamente, ha conseguido un '+str(acierto)+'% de acierto'
             )
+        if(os.path.exists('resultados/piernasDataset.csv') and clientID != -1):
+            b_predeci.config(state='normal')
     else:
         #muestro el mensaje de que se ha producido un error
         tkinter.messagebox.showwarning(
             'Entrenamiento',
             'Hay un error al entrenar con el clasificador'
             )
+        
+def predecir2():
+    
+    if(clientID == -1):
+        tkinter.messagebox.showerror(
+            'Error Conect VREP',
+            'Debe conectar con VREP'
+            )
+    else:
+        terminado = predecir.modelo(clientID, params[4], params[5], params[6])
+        
+        if(terminado):
+            #muestro el mensaje de que se ha entrenado correctamente
+            tkinter.messagebox.showinfo(
+                'Predicción',
+                'Se han predecido correctamente. Vea la grafica en resultados/prediccion/predecido.jpg'
+                )
+        else:
+            #muestro el mensaje de que se ha producido un error
+            tkinter.messagebox.showwarning(
+                'Predicción',
+                'Hay un error al predecir'
+                )
     
 #función que comprueba que los datos son correctos al pulsar cambiar
 def validarDatos():
@@ -419,7 +463,7 @@ class Aplicacion():
             state = tkinter.DISABLED,
             command = entrenar)
         b_entrena.grid(row=7, column=0)
-        b_predeci = tkinter.Button(self.parent, text='Predecir', state = tkinter.DISABLED)
+        b_predeci = tkinter.Button(self.parent, text='Predecir', state = tkinter.DISABLED, command=predecir2)
         b_predeci.grid(row=8, column=0)
         
         #le indico el root para la acción salir
@@ -528,6 +572,9 @@ class Aplicacion():
             
         if(os.path.exists('resultados/piernasDataset.csv')):
             b_entrena.config(state='normal')
+            
+        if(os.path.exists('resultados/piernasDataset.csv') and clientID != -1):
+            b_predeci.config(state='normal')
     
 #compruebo si esta en el entorno principal, si lo esta ejecuto la aplicación
 if __name__=="__main__":

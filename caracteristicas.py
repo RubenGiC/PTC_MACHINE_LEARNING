@@ -10,67 +10,85 @@ import os
 import json
 import numpy as np
 #import time
+from funciones_globales import leerJson
 
-def calculaCaracteristicas(files):
+def calculaCaracteristicas(files, test=False):
     
     #inicio = time.time()
     # mostramos el directorio de trabajo y vemos si existe el dir para salvar los datos
-    print("Directorio de trabajo es: ", os.getcwd())
+    #print("Directorio de trabajo es: ", os.getcwd())
     
-    #guardara los clusters con resultados positivos y negativos
-    clustersPositivos = []
-    clustersNegativos = []
-    
-    #esto es para diferenciar los archivos con resultados positivos y negativos
-    first = True
-    
-    for file in files:
-        #leemos el fichero json
-        with open(file, 'r') as f:
-         for line in f:
-             
-             if(first):
-                 #y guardamos su contenido
-                 clustersPositivos.append(json.loads(line))
-             else:
-                 #y guardamos su contenido
-                 clustersNegativos.append(json.loads(line))
-         
-        first = False
+    #si es el modo predecir
+    if(test):
+        clusters = leerJson(files)
+        print(f'Nº clusters: {len(clusters)}')
         
-    print(f'positivos: {len(clustersPositivos)} negativos: {len(clustersNegativos)}')
-    
-    #generamos los archivos .dat
-    generaJsonPerimetroProfundidadAnchura(clustersPositivos, True)
-    generaJsonPerimetroProfundidadAnchura(clustersNegativos, False)
-    
-    #generamos el csv que contiene todos los casos positivos y negativos
-    generaCSVAll()
+        generaJsonPerimetroProfundidadAnchuraTest(clusters)
+        #generamos el csv que contiene todos los casos positivos y negativos
+        generaCSVAll(True)
+        
+    else:
+        #guardara los clusters con resultados positivos y negativos    
+        #guardamos los datos en json en las variables
+        clustersPositivos = leerJson([files[0]])
+        clustersNegativos = leerJson([files[1]])
+            
+        print(f'Se han extraido positivos: {len(clustersPositivos)} negativos: {len(clustersNegativos)}')
+        
+        #si están vacios es que no hay datos en el archivo json
+        if(len(clustersPositivos) == 0 or len(clustersNegativos)==0):
+            return False
+        
+        #generamos los archivos .dat
+        generaJsonPerimetroProfundidadAnchura(clustersPositivos, True)
+        generaJsonPerimetroProfundidadAnchura(clustersNegativos, False)
+        
+        #generamos el csv que contiene todos los casos positivos y negativos
+        generaCSVAll()
     
     #tiempo = time.time() - inicio
     #print('Elapse: ',tiempo)
+    
+    return True
 
 #función que genera el CSV con todos los datos positivos y negativos
-def generaCSVAll():
-    files = ['resultados/caracteristicasNoPiernas.dat', 'resultados/caracteristicasPiernas.dat']
+def generaCSVAll(test=False):
     
-    #guardo la informacion que necesitamos en un nuevo csv
-    fcsv=open("resultados/piernasDataset.csv", "w",encoding="utf8")
+    try:
+        if(test):
+            files = ['resultados/prediccion/caracteristicas.dat']
+            #guardo la informacion que necesitamos en un nuevo csv
+            fcsv=open("resultados/prediccion/dataset.csv", "w",encoding="utf8")
+        else:
+            files = ['resultados/caracteristicasNoPiernas.dat', 'resultados/caracteristicasPiernas.dat']
+        
+            #guardo la informacion que necesitamos en un nuevo csv
+            fcsv=open("resultados/piernasDataset.csv", "w",encoding="utf8")
+            
+        #recorro los archivos .dat
+        for file in files:
+            with open(file,'r') as f:
+                for line in f:#leo su contenido
+                    
+                    #lo transformo en diccionario
+                    cluster = json.loads(line)
+                    
+                    if(test):
+                        #creo el formato para el csv
+                        formato = str(cluster['perimetro'])+';'+str(cluster['profundidad'])+';'+str(cluster['anchura'])
+                    else:
+                        #creo el formato para el csv
+                        formato = str(cluster['perimetro'])+';'+str(cluster['profundidad'])+';'+str(cluster['anchura'])+';'+str(cluster['esPierna'])
+                    #y añado los datos en formato csv
+                    fcsv.write(formato+'\n')
+                    
+        fcsv.close()
     
-    #recorro los archivos .dat
-    for file in files:
-        with open(file,'r') as f:
-            for line in f:#leo su contenido
-                
-                #lo transformo en diccionario
-                cluster = json.loads(line)
-                
-                #creo el formato para el csv
-                formato = str(cluster['perimetro'])+';'+str(cluster['profundidad'])+';'+str(cluster['anchura'])+';'+str(cluster['esPierna'])
-                #y añado los datos en formato csv
-                fcsv.write(formato+'\n')
-                
-    fcsv.close()
+    except FileNotFoundError:
+        print('Error hay un archivo que no se ha encontrado')
+    except Exception:
+        print('Error el archivo no se ha podido abrir')
+    
 
 #función que genera los archivos .dat con los datos calculados (profundidad, anchura y perimetro)
 def generaJsonPerimetroProfundidadAnchura(clusteres, pierna):
@@ -81,46 +99,101 @@ def generaJsonPerimetroProfundidadAnchura(clusteres, pierna):
     if(pierna):
         file = 'resultados/caracteristicasPiernas.dat'        
         p=1
-        
-    #reeditamos o creamos el archivo .dat
-    fichero=open(file, "w")
     
-    #recorremos los clusters
-    for cluster in clusteres:
+    try:
+        #reeditamos o creamos el archivo .dat
+        fichero=open(file, "w")
         
-        #calcula la anchura y el perimetro del cluster
-        perimetro, anchura = calculaPerimetroYAnchura(cluster)
+        #recorremos los clusters
+        for cluster in clusteres:
+            
+            #calcula la anchura y el perimetro del cluster
+            perimetro, anchura = calculaPerimetroYAnchura(cluster)
+            
+            #print('Perimetro:',perimetro)
+            #print('Anchura:',anchura)
+            
+            #obtenemos la ecuación para calcular la profundidad de un punto con respecto a una recta
+            profundidad = calculaProfundidad(
+                cluster['PuntosX'][0], 
+                cluster['PuntosY'][0], 
+                cluster['PuntosX'][-1], 
+                cluster['PuntosY'][-1])
+            
+            #guardara la máxima profundidad    
+            max_prof = max([
+            profundidad(cluster['PuntosX'][i], cluster['PuntosY'][i]) 
+            for i in np.arange(len(cluster['PuntosY']))
+            ])
+         
+            #print(f"Maxima Profundidad = {max_prof}")
+            
+            #guardamos el perimetro, anchura, profundidad y si es pierna o no
+            fichero.write(
+                json.dumps({
+                    'numero_cluster':cluster['numero_cluster'], 
+                    'perimetro':perimetro, 
+                    'profundidad':max_prof, 
+                    'anchura':anchura, 
+                    'esPierna':p})
+                +'\n')
+            
+        fichero.close()
         
-        #print('Perimetro:',perimetro)
-        #print('Anchura:',anchura)
+    except FileNotFoundError:
+        print('Error el archivo',file,'no se ha encontrado')
+    except Exception:
+        print('Error el archivo',file,'no se ha podido abrir')
+    
+#función que genera los archivos .dat con los datos calculados (profundidad, anchura y perimetro)
+def generaJsonPerimetroProfundidadAnchuraTest(clusteres):
+    
+    file = 'resultados/prediccion/caracteristicas.dat'
+    
+    try:
+        #reeditamos o creamos el archivo .dat
+        fichero=open(file, "w")
         
-        #obtenemos la ecuación para calcular la profundidad de un punto con respecto a una recta
-        profundidad = calculaProfundidad(
-            cluster['PuntosX'][0], 
-            cluster['PuntosY'][0], 
-            cluster['PuntosX'][-1], 
-            cluster['PuntosY'][-1])
+        #recorremos los clusters
+        for cluster in clusteres:
+            
+            #calcula la anchura y el perimetro del cluster
+            perimetro, anchura = calculaPerimetroYAnchura(cluster)
+            
+            #print('Perimetro:',perimetro)
+            #print('Anchura:',anchura)
+            
+            #obtenemos la ecuación para calcular la profundidad de un punto con respecto a una recta
+            profundidad = calculaProfundidad(
+                cluster['PuntosX'][0], 
+                cluster['PuntosY'][0], 
+                cluster['PuntosX'][-1], 
+                cluster['PuntosY'][-1])
+            
+            #guardara la máxima profundidad    
+            max_prof = max([
+            profundidad(cluster['PuntosX'][i], cluster['PuntosY'][i]) 
+            for i in np.arange(len(cluster['PuntosY']))
+            ])
+         
+            #print(f"Maxima Profundidad = {max_prof}")
+            
+            #guardamos el perimetro, anchura, profundidad y si es pierna o no
+            fichero.write(
+                json.dumps({
+                    'numero_cluster':cluster['numero_cluster'], 
+                    'perimetro':perimetro, 
+                    'profundidad':max_prof, 
+                    'anchura':anchura})
+                +'\n')
+            
+        fichero.close()
         
-        #guardara la máxima profundidad    
-        max_prof = max([
-        profundidad(cluster['PuntosX'][i], cluster['PuntosY'][i]) 
-        for i in np.arange(len(cluster['PuntosY']))
-        ])
+    except FileNotFoundError:
+        print('Error el archivo',file,'no se ha encontrado')
+    except Exception:
+        print('Error el archivo',file,'no se ha podido abrir')
      
-        #print(f"Maxima Profundidad = {max_prof}")
-        
-        #guardamos el perimetro, anchura, profundidad y si es pierna o no
-        fichero.write(
-            json.dumps({
-                'numero_cluster':cluster['numero_cluster'], 
-                'perimetro':perimetro, 
-                'profundidad':max_prof, 
-                'anchura':anchura, 
-                'esPierna':p})
-            +'\n')
-        
-    fichero.close()
- 
 #función que calcula el perimetro y la anchura de un cluster
 def calculaPerimetroYAnchura(cluster):
      
